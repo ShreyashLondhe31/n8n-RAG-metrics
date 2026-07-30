@@ -88,3 +88,25 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ steps.prepare.outputs.image }}
+
+  dockerhub-publish:
+    needs: security-scan
+    if: github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker Hub image
+        run: |
+          docker build -t local/n8n-rag-metrics:optimized .
+          docker tag local/n8n-rag-metrics:optimized docker.io/${{ secrets.DOCKERHUB_USERNAME }}/n8n-rag-metrics:optimized
+          docker push docker.io/${{ secrets.DOCKERHUB_USERNAME }}/n8n-rag-metrics:optimized
+        shell: bash

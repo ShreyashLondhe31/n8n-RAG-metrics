@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM n8nio/n8n:ai-beta
+FROM n8nio/n8n:slimmer-custom-image
 
 ENV N8N_PORT=5678 \
     N8N_PROTOCOL=http \
