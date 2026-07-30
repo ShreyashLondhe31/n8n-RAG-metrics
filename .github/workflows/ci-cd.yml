@@ -74,10 +74,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare lowercase GHCR image name
+        id: prepare
+        run: |
+          # Lowercase GITHUB_REPOSITORY (owner/repo) for GHCR namespace
+          echo "image=ghcr.io/$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]'):latest" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: "ghcr.io/${{ toLower(github.repository_owner) }}/n8n-rag-metrics:latest"
+          tags: ${{ steps.prepare.outputs.image }}
