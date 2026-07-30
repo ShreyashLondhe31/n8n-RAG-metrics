@@ -28,7 +28,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false
-          tags: local/n8n-rag-metrics:ci
+          tags: "local/n8n-rag-metrics:ci"
           load: true
 
       - name: Fallback: build image using docker CLI
