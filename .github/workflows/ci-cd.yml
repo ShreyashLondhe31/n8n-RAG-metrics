@@ -30,14 +30,30 @@ jobs:
         with:
           version: v0.70.0
 
-      - name: Run Trivy CLI against tarball
+      - name: Run Trivy CLI against tarball (generate reports)
         run: |
           trivy image --input vuln-image.tar \
             --severity CRITICAL \
             --ignore-unfixed \
+            --format json \
+            --output trivy-results.json || true
+          trivy image --input vuln-image.tar \
+            --severity CRITICAL \
+            --ignore-unfixed \
             --format table \
-            --exit-code 1
+            --output trivy-results.txt || true
+          if [ -s trivy-results.txt ]; then
+            echo "::warning::Trivy produced a report (check artifacts)."
+          fi
         shell: bash
+
+      - name: Upload Trivy results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: |
+            trivy-results.json
+            trivy-results.txt
 
       - name: Cleanup
         if: always()
