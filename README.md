@@ -2,6 +2,8 @@
 
 This project runs n8n with PostgreSQL and Qdrant for RAG-oriented metric workflows.
 
+[![CI/CD](https://github.com/ShreyashLondhe31/n8n-RAG-metrics/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ShreyashLondhe31/n8n-RAG-metrics/actions)
+
 ## Security hardening
 
 - Docker image runs as a non-root user.
