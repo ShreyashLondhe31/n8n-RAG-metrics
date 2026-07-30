@@ -25,16 +25,19 @@ jobs:
       - name: Save image to tar
         run: docker save local/n8n-rag-metrics:ci -o vuln-image.tar
 
-      - name: Run Trivy vulnerability scan (tarball)
-        uses: aquasecurity/trivy-action@v0.36.0
+      - name: Setup Trivy CLI
+        uses: aquasecurity/setup-trivy@v0.2.0
         with:
-          input: vuln-image.tar
-          format: table
-          exit-code: 1
-          ignore-unfixed: true
-          scanners: vuln
-          vuln-type: library
-          severity: CRITICAL
+          version: v0.70.0
+
+      - name: Run Trivy CLI against tarball
+        run: |
+          trivy image --input vuln-image.tar \
+            --severity CRITICAL \
+            --ignore-unfixed \
+            --format table \
+            --exit-code 1
+        shell: bash
 
       - name: Cleanup
         if: always()
