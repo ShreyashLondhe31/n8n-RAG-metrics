@@ -91,13 +91,14 @@ jobs:
 
   dockerhub-publish:
     needs: security-scan
-    if: github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@v3
         with:
           registry: docker.io
@@ -105,8 +106,13 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push Docker Hub image
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
         run: |
           docker build -t local/n8n-rag-metrics:optimized .
           docker tag local/n8n-rag-metrics:optimized docker.io/${{ secrets.DOCKERHUB_USERNAME }}/n8n-rag-metrics:optimized
           docker push docker.io/${{ secrets.DOCKERHUB_USERNAME }}/n8n-rag-metrics:optimized
         shell: bash
+
+      - name: Skip Docker Hub publish when secrets are missing
+        if: ${{ secrets.DOCKERHUB_USERNAME == '' || secrets.DOCKERHUB_TOKEN == '' }}
+        run: echo 'Skipping Docker Hub publish because DOCKERHUB_USERNAME or DOCKERHUB_TOKEN is not configured.'
