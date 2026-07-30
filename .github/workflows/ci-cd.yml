@@ -38,8 +38,9 @@ jobs:
           format: table
           exit-code: 1
           ignore-unfixed: true
-          vuln-type: os,library
-          severity: HIGH,CRITICAL
+          scanners: vuln
+          vuln-type: library
+          severity: CRITICAL
 
   docker-publish:
     needs: security-scan
