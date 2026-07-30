@@ -1,0 +1,241 @@
+{
+  "name": "RAG: Document Ingestion",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f21048f4-f460-412c-9f9e-19c0d3a37f05",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        880,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/hwchase17/chat-your-data/master/state_of_the_union.txt",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "ff77752a-e1e3-4e7c-9436-7611bd3c47f8",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1100,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.data; \nconst chunkSize = 1000;\nconst overlap = 200;\nconst chunks = [];\n\nfor (let i = 0; i < text.length; i += (chunkSize - overlap)) {\n    chunks.push({\n        json: { chunk: text.slice(i, i + chunkSize) }\n    });\n}\nreturn chunks;"
+      },
+      "id": "d21bb645-855e-49db-b3df-ddf1d6374add",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "id": "2e8f3c61-c1d3-46c2-96dc-3bf6bb3bf8c7",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1540,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cohere.ai/v1/embed",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ \n  JSON.stringify({\n    \"texts\": [$json.chunk],\n    \"model\": \"embed-english-v3.0\",\n    \"input_type\": \"search_document\"\n  }) \n}}",
+        "options": {}
+      },
+      "id": "abc6ef88-ef6b-454c-b8e7-1eb024dec465",
+      "name": "HTTP Request1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1800,
+        420
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wIkrN3cnTviepCl5",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n    json: {\n        chunk: $json.texts[0],\n        vector_string: \"[\" + $json.embeddings[0].join(\",\") + \"]\"\n    }\n};"
+      },
+      "id": "b59bd492-ee4f-40b7-b98c-1eda95b735d6",
+      "name": "Code1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2020,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO embeddings (content, vector) \nVALUES (\n    '{{ $json.chunk.replace(/'/g, \"''\") }}', \n    '{{ $json.vector_string }}'::vector\n);",
+        "options": {}
+      },
+      "id": "178db8fd-5e2d-417f-ae39-0f83747c5285",
+      "name": "Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        2240,
+        420
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "x2zY1tM68WSJVytd",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 5
+      },
+      "id": "02947ac6-7f4e-4f24-87a8-e74b3969353e",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        2460,
+        420
+      ],
+      "webhookId": "cf3615a6-d982-4aa2-8425-2147016c127e"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a405a5c4-3041-44d9-93e3-314b403cf258",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7b85a728ede9344165c4b7370a2e79c3bed69da657fb7f57dbc25633f6ae3069"
+  },
+  "id": "8QiESbrydltPkpAI",
+  "tags": []
+}

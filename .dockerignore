@@ -1,0 +1,17 @@
+# Git files
+.git
+.github
+.gitignore
+
+# Environment files
+.env
+.env.*
+
+# Local data and logs
+*.log
+*.tmp
+
+# OS and editor files
+.DS_Store
+.vscode
+.idea

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Local AI</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f9;
+        display: flex;
+        justify-content: center;
+        padding-top: 50px;
+      }
+      #chat-container {
+        width: 400px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      #chat-box {
+        height: 400px;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: #fafafa;
+      }
+      .message {
+        padding: 10px 14px;
+        border-radius: 8px;
+        max-width: 80%;
+        line-height: 1.4;
+      }
+      .user-msg {
+        background: #007bff;
+        color: white;
+        align-self: flex-end;
+      }
+      .ai-msg {
+        background: #e9ecef;
+        color: #333;
+        align-self: flex-start;
+      }
+      #input-area {
+        display: flex;
+        border-top: 1px solid #ddd;
+        padding: 10px;
+        background: white;
+      }
+      #user-input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        outline: none;
+      }
+      button {
+        padding: 10px 15px;
+        margin-left: 10px;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      button:hover {
+        background: #218838;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chat-container">
+      <div id="chat-box">
+        <div class="message ai-msg">
+          Hello! I have read the State of the Union. What would you like to
+          know?
+        </div>
+      </div>
+      <div id="input-area">
+        <input
+          type="text"
+          id="user-input"
+          placeholder="Ask about taxes, economy, etc..."
+          onkeypress="handleKeyPress(event)"
+        />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <script>
+      async function sendMessage() {
+        const inputField = document.getElementById("user-input");
+        const chatBox = document.getElementById("chat-box");
+        const query = inputField.value.trim();
+
+        if (!query) return;
+
+        // 1. Display User Message
+        chatBox.innerHTML += `<div class="message user-msg">${query}</div>`;
+        inputField.value = "";
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // Add a temporary "Thinking..." message
+        const thinkingId = "thinking-" + Date.now();
+        chatBox.innerHTML += `<div class="message ai-msg" id="${thinkingId}">Thinking...</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        try {
+          // 2. Send request to your n8n Webhook
+          const response = await fetch(
+            "http://localhost:5678/webhook-test/chat",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ query: query }),
+            },
+          );
+
+          const data = await response.json();
+
+          // 3. Update UI with AI Answer
+          document.getElementById(thinkingId).innerText = data.answer;
+        } catch (error) {
+          document.getElementById(thinkingId).innerText =
+            "Error connecting to the AI backend. Is n8n running?";
+          console.error(error);
+        }
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
+      function handleKeyPress(event) {
+        if (event.key === "Enter") sendMessage();
+      }
+    </script>
+  </body>
+</html>

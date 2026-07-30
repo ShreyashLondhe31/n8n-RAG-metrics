@@ -1,0 +1,249 @@
+{
+  "name": "Chat API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "bdf76a16-dff1-4436-b3a3-c517a734c037",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        820,
+        400
+      ],
+      "webhookId": "c648905d-a77a-48e2-a831-eeabd596ea2b"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cohere.ai/v1/embed",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"texts\": [ \"{{ $json.body.query }}\" ],\n  \"model\": \"embed-english-v3.0\",\n  \"input_type\": \"search_query\"\n}",
+        "options": {}
+      },
+      "id": "d1c13790-8f78-44c3-aae4-28ccc1cfd8bb",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1040,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wIkrN3cnTviepCl5",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const embeddingData = $input.first().json.embeddings[0];\nconst query = $('Webhook').item.json.body.query;\n\nreturn {\n    json: {\n        query: query,\n        vector_string: \"[\" + embeddingData.join(\",\") + \"]\"\n    }\n};"
+      },
+      "id": "b9dc5325-eb65-4a45-a05d-bf318716ac95",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT content \nFROM embeddings \nORDER BY vector <=> '{{ $json.vector_string }}'::vector \nLIMIT 5;",
+        "options": {}
+      },
+      "id": "bfcc2a84-9fc2-46a3-9437-efaa67a57373",
+      "name": "Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        1480,
+        400
+      ],
+      "executeOnce": false,
+      "credentials": {
+        "postgres": {
+          "id": "x2zY1tM68WSJVytd",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nlet combinedContext = \"\";\n\nrows.forEach((row, index) => {\n    combinedContext += `--- Excerpt ${index + 1} ---\\n${row.json.content}\\n\\n`;\n});\n\nconst query = $('Webhook').first().json.body.query;\n\nreturn {\n    json: {\n        query: query,\n        context: combinedContext\n    }\n};"
+      },
+      "id": "8189b059-eaf6-4075-a755-c74e68d0d077",
+      "name": "Code1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cohere.ai/v1/chat",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ \n  JSON.stringify({\n    \"message\": $json.query,\n    \"preamble\": \"You are a precise assistant. Answer the user's question using ONLY the provided context. If the answer is not in the context, say 'I cannot find the answer in the provided document.' \\n\\nCONTEXT:\\n\" + $json.context,\n    \"model\": \"command-a-03-2025\"\n  }) \n}}",
+        "options": {}
+      },
+      "id": "727f64d0-f769-4e9b-94ba-80c2e4476d6c",
+      "name": "HTTP Request1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1920,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wIkrN3cnTviepCl5",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO user_metrics (user_query, ai_response) \nVALUES (\n    '{{ $('Webhook').first().json.body.query.replace(/'/g, \"''\") }}', \n    '{{ $json.text.replace(/'/g, \"''\") }}'\n);",
+        "options": {}
+      },
+      "id": "8a771be7-5b80-40cd-85e0-b5d382b7666a",
+      "name": "Postgres1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        2100,
+        400
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "x2zY1tM68WSJVytd",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"answer\": \"{{ $('HTTP Request1').item.json.text }}\"\n}",
+        "options": {}
+      },
+      "id": "eb2849e1-1205-41fd-912d-8745839bf9bf",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        400
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Postgres1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c5aa0de2-dc0b-4163-bfc0-1719ec6267cc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7b85a728ede9344165c4b7370a2e79c3bed69da657fb7f57dbc25633f6ae3069"
+  },
+  "id": "oeKUdcsv4nTacNhE",
+  "tags": []
+}
