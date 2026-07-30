@@ -26,7 +26,7 @@ jobs:
         run: docker save local/n8n-rag-metrics:ci -o vuln-image.tar
 
       - name: Setup Trivy CLI
-        uses: aquasecurity/setup-trivy@v0.2.0
+        uses: aquasecurity/setup-trivy@v0.3.1
         with:
           version: v0.70.0
 
